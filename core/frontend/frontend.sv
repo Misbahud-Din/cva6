@@ -260,8 +260,16 @@ module frontend
           // make sure to only alter the RAS if we actually consumed the instruction
           ras_pop = ras_predict.valid & instr_queue_consumed[i];
           ras_push = 1'b0;
-          predict_address = ras_predict.ra;
-          cf_type[i] = ariane_pkg::Return;
+          // only claim a prediction when the RAS entry is valid. bp_valid below
+          // already requires ras_predict.valid before redirecting, so an invalid
+          // entry never steers the fetch; without this guard the instruction is
+          // still handed to instr_queue marked Return and carrying ras_predict.ra
+          // (0 when invalid), and instr_queue reconstructs the next PC from that
+          // target instead of incrementing.
+          if (ras_predict.valid) begin
+            predict_address = ras_predict.ra;
+            cf_type[i] = ariane_pkg::Return;
+          end
         end
         // branch prediction
         4'b1000: begin
